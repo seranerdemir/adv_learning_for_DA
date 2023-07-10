@@ -417,39 +417,3 @@ def ValidateModel(model, val_loader, gpu_id):
 
         cls_iu = dict(zip(range(num_classes), [round(iu[i] * 100, 2) if m else "X" for i, m in enumerate(mask)]))
         return mean_iu, cls_iu, avg_acc
-
-
-
-def validate_pixAdv_from_pixda(model, pixAdv_disc, val_loader, metrics, gpu_id):
-    model.eval()
-    metrics.reset()
-    ignore_label = 255
-
-    results = {}
-    val_loss = 0.0
-    with torch.no_grad():
-        for index, batch in tqdm(enumerate(val_loader), disable=False):
-            image, label, _, name = batch
-            pred_high = model(image.to(gpu_id, dtype=torch.float32))
-
-            interp = torch.nn.Upsample(size=(label.shape[1], label.shape[2]), mode='bilinear', align_corners=True).to(gpu_id)
-            output = interp(pred_high)
-
-
-            #for img, lbl, out in zip(interp(image), label, output):
-                #visualizer.display_current_results([(img, lbl, out)], val_iter, 'Val')
-
-            _, output = output.max(dim=1)
-            output = output.cpu().numpy()
-            label = label.cpu().numpy()
-            metrics.update(label, output)
-
-        #visualizer.info(f'Validation loss at iter {val_iter}: {val_loss/len(val_loader)}')
-        #visualizer.add_scalar('Validation_Loss', val_loss/len(val_loader), val_iter)
-        score = metrics.get_results()
-        #visualizer.add_figure("Val_Confusion_Matrix_Recall", score['Confusion Matrix'], step=val_iter)
-        #visualizer.add_figure("Val_Confusion_Matrix_Precision", score["Confusion Matrix Pred"], step=val_iter)
-        results["Val_IoU"] = score['Class IoU']
-        #visualizer.add_results(results)
-        #visualizer.add_scalar('Validation_mIoU', score['Mean IoU'], val_iter)
-        #visualizer.info(metrics.to_str_print(score))
